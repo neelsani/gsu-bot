@@ -1,6 +1,13 @@
 name = "gsu-bot"
 main = "./src/server.js"
 compatibility_date="2024-02-28"
+[triggers]
+# Schedule cron triggers:
+# - At every 3rd minute
+# - At 3PM on first day of the month
+# - At 11:59PM on the last weekday of the month
+crons = ["*/30 * * * *"]
+
 
 # [secrets]
 # DISCORD_TOKEN

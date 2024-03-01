@@ -1,4 +1,4 @@
-import { COURSES_COMMAND } from './commands.js';
+import { COURSES_COMMAND, WATCH_COMMAND } from './commands.js';
 import dotenv from 'dotenv';
 
 /*
@@ -39,7 +39,7 @@ const response = await fetch(url, {
     Authorization: `Bot ${token}`,
   },
   method: 'PUT',
-  body: JSON.stringify([ COURSES_COMMAND]),
+  body: JSON.stringify([ COURSES_COMMAND, WATCH_COMMAND]),
 });
 
 if (response.ok) {
