@@ -93,3 +93,49 @@ export const COURSES_COMMAND = {
  
 ],
 };
+export const REMOVE_COMMAND = {
+  name: 'remove',
+  description: 'remove course register from watchlist',
+  options: [ 
+    {
+      name: "term",
+      description: "the term to search",
+      type: 3,
+      required: true,
+      choices: [
+        {
+          name: "Summer 2024",
+          value: "202405"
+        },
+        
+        {
+          name: "Spring 2024",
+          value: "202401"
+        }
+      ]
+    },
+    {
+    name: "subject",
+    description: "subject",
+    type: 3,
+    required: true
+    
+    
+  },
+  {
+    name: "coursenum",
+    description: "coursenum",
+    type: 3,
+    required: true
+    
+    
+  },
+  {
+    name: "crn",
+    description: "crn id",
+    type: 3,
+    required: true,
+}
+ 
+],
+};

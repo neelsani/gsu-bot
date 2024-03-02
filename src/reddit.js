@@ -111,9 +111,9 @@ export async function getCourses(subject, coursenum, term) {
 		
 		description: `Below is a list of professors teaching ${subject} ${coursenum} for the ${term} term`,
 		color: 54783,
-		fields: coursesData.data.map(professor => { numResults++
-			return createProfessorField(professor.faculty.map(w => w.displayName).join(', '), professor.courseReferenceNumber, professor.seatsAvailable, professor.maximumEnrollment, professor.meetingsFaculty[0].meetingTime.startDate,professor.meetingsFaculty[0].meetingTime.endDate)}
-			),
+		fields: await Promise.all(coursesData.data.map(async professor => { numResults++
+			return await createProfessorField(professor.faculty.map(w => w.displayName).join(', '), professor.courseReferenceNumber, professor.seatsAvailable, professor.maximumEnrollment, professor.meetingsFaculty[0].meetingTime.startDate,professor.meetingsFaculty[0].meetingTime.endDate)}
+			)),
 		title: `${subject} ${coursenum} Professors - ${numResults} results`,
 	  }
 	],
@@ -244,4 +244,75 @@ export async function sendStr(dastr, env) {
   } catch (error) {
     console.error('Error sending message to Discord:', error);
   }
+}
+/*
+export async function rateMyProf(name) {
+    let modName = name;
+    if (name.slice(-1) === '.') {
+        modName = name.slice(0, -2);
+    }
+	console.log(modName)
+    let maxNumRatings = -1;
+    let maxData = null;
+
+    for (const x of GSU) {
+        const result = await ratings.searchTeacher(modName, x);
+        for (const w of result) {
+            const teacher = await ratings.getTeacher(w.id);
+            if (teacher.numRatings > maxNumRatings) {
+                maxNumRatings = teacher.numRatings;
+                maxData = [teacher.numRatings, teacher.avgDifficulty, teacher.avgRating, teacher.wouldTakeAgainPercent];
+            }
+        }
+    }
+	
+    
+		return maxData;
+	
+	
+}
+*/
+export const rateMyProf =async (name) =>  {
+	let modName = name;
+    if (name.slice(-1) === '.') {
+        modName = name.slice(0, -2);
+    }
+	let maxNumRatings = 0;
+    let maxData = null;
+	const postData = {
+		query: "query TeacherSearchResultsPageQuery(\n  $query: TeacherSearchQuery!\n  $schoolID: ID\n  $includeSchoolFilter: Boolean!\n) {\n  search: newSearch {\n    ...TeacherSearchPagination_search_1ZLmLD\n  }\n  school: node(id: $schoolID) @include(if: $includeSchoolFilter) {\n    __typename\n    ... on School {\n      name\n    }\n    id\n  }\n}\n\nfragment TeacherSearchPagination_search_1ZLmLD on newSearch {\n  teachers(query: $query, first: 8, after: \"\") {\n    didFallback\n    edges {\n      cursor\n      node {\n        ...TeacherCard_teacher\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n    resultCount\n    filters {\n      field\n      options {\n        value\n        id\n      }\n    }\n  }\n}\n\nfragment TeacherCard_teacher on Teacher {\n  id\n  legacyId\n  avgRating\n  numRatings\n  ...CardFeedback_teacher\n  ...CardSchool_teacher\n  ...CardName_teacher\n  ...TeacherBookmark_teacher\n}\n\nfragment CardFeedback_teacher on Teacher {\n  wouldTakeAgainPercent\n  avgDifficulty\n}\n\nfragment CardSchool_teacher on Teacher {\n  department\n  school {\n    name\n    id\n  }\n}\n\nfragment CardName_teacher on Teacher {\n  firstName\n  lastName\n}\n\nfragment TeacherBookmark_teacher on Teacher {\n  id\n  isSaved\n}\n",
+		variables: {
+		  query: {
+			text: modName,
+			schoolID: "",
+			fallback: true,
+			departmentID: null
+		  },
+		  schoolID: "",
+		  includeSchoolFilter: false
+		}
+	  }
+	  const termSearchResponse = await fetch("https://www.ratemyprofessors.com/graphql", {
+		method: "POST",
+		headers: {
+			"User-Agent" : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36",
+			"Content-Type": "application/json",
+      "Authorization": "Basic dGVzdDp0ZXN0"
+
+		},
+		body: JSON.stringify(postData),
+		redirect: "follow"
+		
+	});
+  const a = await termSearchResponse.json()
+  if (a) {
+  a.data.search.teachers.edges.map(x => {
+    if (x.node.school.name.includes("Georgia State University")) {
+    if (x.node.numRatings>maxNumRatings) {
+		maxNumRatings = x.node.numRatings;
+		maxData = [x.node.numRatings, x.node.avgDifficulty, x.node.avgRating, x.node.wouldTakeAgainPercent]
+	}
+}
+  })}
+  return maxData
 }
