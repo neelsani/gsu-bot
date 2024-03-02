@@ -9,8 +9,9 @@ import {
   InteractionType,
   verifyKey,
 } from 'discord-interactions';
-import { COURSES_COMMAND, WATCH_COMMAND} from './commands.js';
+import { COURSES_COMMAND, DUMP_COMMAND, WATCH_COMMAND} from './commands.js';
 import {  getCourses, getCrnSeats, sendMessage, sendStr } from './reddit.js';
+import { createProfessorField } from './messages.js';
 
 class JsonResponse extends Response {
   constructor(body, init) {
@@ -24,8 +25,6 @@ class JsonResponse extends Response {
   }
 }
 
-let App;
-
 const router = Router();
 
 /**
@@ -34,9 +33,11 @@ const router = Router();
 router.get('/', (request, env) => {
   return new Response(`👋 ${env.DISCORD_APPLICATION_ID}`);
 });
+
 router.get('/test', async (request, env) => {
-  //await scheduledEventHandler("", env)
-  return new Response(`yh   ${env.DISCORD_APPLICATION_ID}`);
+  const x = await scheduledEventHandler("", env)
+  console.log(x)
+  return new Response(`${x}`)
 });
 
 /**
@@ -77,7 +78,7 @@ router.post('/', async (request, env) => {
       }
       case WATCH_COMMAND.name.toLowerCase(): {
         
-        App = App || new Realm.App(env.MONGODB_REALM_APPID);
+        const App = new Realm.App(env.MONGODB_REALM_APPID);
         const token = env.MONGO_API
         const credentials = Realm.Credentials.apiKey(token);
         // Attempt to authenticate
@@ -137,6 +138,54 @@ router.post('/', async (request, env) => {
         })
         //implement
       }
+      case DUMP_COMMAND.name.toLowerCase(): {
+
+      const App= await new Realm.App(env.MONGODB_REALM_APPID);
+      const token = env.MONGO_API
+      const credentials = await Realm.Credentials.apiKey(token);
+      // Attempt to authenticate
+      var user = await App.logIn(credentials);
+      var client = await user.mongoClient('mongodb-atlas');
+      let db =  await client.db('cloudflare')
+      let collection = await db.collection('todos');
+     
+      while (typeof collection.find != 'function') {
+        user = await App.logIn(credentials);
+        client = await user.mongoClient('mongodb-atlas');
+        db =  await client.db('cloudflare')
+        collection = await db.collection('todos');
+      }
+      //return collection
+      
+      const cursor = await collection.find()
+      let numResults = 0
+
+
+        const embed = {
+          content: "",
+          tts: false,
+          embeds: [
+            {
+            id: 77412190,
+            
+            description: `Below is a list of professors in the watchlist`,
+            color: 54783,
+            fields: cursor.map( professor => { 
+              numResults++
+              return  createProfessorField(professor.prof.faculty.map(w => w.displayName).join(', '), professor.prof.courseReferenceNumber, professor.prof.seatsAvailable, professor.prof.maximumEnrollment, professor.prof.meetingsFaculty[0].meetingTime.startDate,professor.prof.meetingsFaculty[0].meetingTime.endDate)
+            }
+              ),
+            title: `Professors - ${numResults} results`,
+            }
+          ],
+          components: [],
+          actions: {}
+          }
+          return new JsonResponse({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: embed
+          });
+        }
       default:
         return new JsonResponse({ error: 'Unknown Type ❌' }, { status: 400 });
     }
@@ -173,35 +222,48 @@ const server = {
   },
 };
 async function scheduledEventHandler(event, env) {
-  let App1 = new Realm.App(env.MONGODB_REALM_APPID);
-        const token = env.MONGO_API
-        const credentials = await Realm.Credentials.apiKey(token);
-        // Attempt to authenticate
-        var user = await App1.logIn(credentials);
-        var client = await user.mongoClient('mongodb-atlas');
-        const db =  await client.db('cloudflare')
-        const collection = await db.collection('todos');
-  const cursor = await collection.find();
-  let documents= []
-  await cursor.forEach(doc => documents.push(doc));
-
-  // Process each document in the array
-  await Promise.all(documents.map(async doc => {
-    // Check if the document and its nested fields exist before accessing them
-    if (doc && doc.prof && doc.prof.courseReferenceNumber) {
+  
+  const App= await new Realm.App(env.MONGODB_REALM_APPID);
+  const token = env.MONGO_API
+  const credentials = await Realm.Credentials.apiKey(token);
+  // Attempt to authenticate
+  var user = await App.logIn(credentials);
+  var client = await user.mongoClient('mongodb-atlas');
+  let db =  await client.db('cloudflare')
+  let collection = await db.collection('todos');
+ 
+  while (typeof collection.find != 'function') {
+    user = await App.logIn(credentials);
+    client = await user.mongoClient('mongodb-atlas');
+    db =  await client.db('cloudflare')
+    collection = await db.collection('todos');
+  }
+  //return collection
+  
+  const cursor = await collection.find()
+ await cursor.map(async doc=>{
+  if (doc && doc.prof && doc.prof.courseReferenceNumber) {
       
-      const newProf = await getCrnSeats(doc.subject, doc.coursenum, doc.term, doc.prof.courseReferenceNumber)
-      if (newProf.seatsAvailable < doc.prof.seatsAvailable) {
+    const newProf = await getCrnSeats(doc.subject, doc.coursenum, doc.term, doc.prof.courseReferenceNumber)
+    if (newProf.seatsAvailable < doc.prof.seatsAvailable) {
 
-      await sendStr(`WATCHLIST ALERT⚠️: ${newProf.faculty.map(w => w.displayName).join(', ')} ${newProf.subject}${doc.coursenum} SOMEONE REGISTERED - CRN:${newProf.courseReferenceNumber}`, env)
-      await collection.updateOne(
-        { "prof.courseReferenceNumber": doc.prof.courseReferenceNumber },
-        { $set: { prof: newProf } }
-      );
-      //await sendMessage(doc.subject, doc.coursenum, doc.term, doc.prof.courseReferenceNumber, env);
-      }
-    } 
-  }));
+    await sendStr(`@xpde WATCHLIST ALERT⚠️: ${newProf.faculty.map(w => w.displayName).join(', ')} ${newProf.subject}${doc.coursenum} SOMEONE REGISTERED - CRN:${newProf.courseReferenceNumber}`, env)
+    await collection.updateOne(
+      { "prof.courseReferenceNumber": doc.prof.courseReferenceNumber },
+      { $set: { prof: newProf } }
+    );
+    //await sendMessage(doc.subject, doc.coursenum, doc.term, doc.prof.courseReferenceNumber, env);
+    }
+  } 
+}
+ )
+ return "done"
+  
+  
+  //return cursor
+  
+  // Process each document in the array
+  
 }
 /*
 addEventListener('scheduled', event => {

@@ -2,7 +2,11 @@
  * Share command metadata from a common spot to be used for both runtime
  * and registration.
  */
-
+export const DUMP_COMMAND = {
+  name: 'dump',
+  description: 'show watchlist',
+  
+}
 export const WATCH_COMMAND = {
   name: 'watch',
   description: 'add course register to watchlist',

@@ -194,15 +194,7 @@ return professorCourse
 
 
 
-export async function removeFromWatchList(subject, coursenum, term, crn, env) {
-	//if in db remove
-}
 
-export async function dumpWatchList(env) {
-	
-
-	return None
-}
 
 export async function sendMessage(subject, coursenum, term, crn, env) {
 	const DISCORD_WEBHOOK_URL = env.DISCORD_WEBHOOK_URL;
